@@ -1,0 +1,490 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Feb 28 11:11:26 2019
+
+@author: Suyash
+"""
+
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[1]:
+
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# Data preparation
+
+# In[2]:
+
+
+import os
+os.getcwd()
+os.chdir("D:\Downloads")
+
+
+# In[ ]:
+
+
+
+
+
+# In[3]:
+
+
+defaultCC = pd.read_csv('UCI_Credit_Card.csv', index_col = 'ID')
+
+
+# In[4]:
+
+
+defaultCC_1 = defaultCC.copy()
+
+
+# In[5]:
+
+
+defaultCC.head(4)
+
+
+# In[6]:
+
+
+defaultCC.rename(columns = lambda x:x.lower(), inplace=True)
+
+
+# In[7]:
+
+
+defaultCC.head(10)
+
+
+# In[8]:
+
+
+#Base Values : female, other_education, not_married
+
+
+# In[9]:
+
+
+defaultCC['grad_school'] = (defaultCC['education'] == 1).astype('int')
+defaultCC['university'] = (defaultCC['education'] == 2).astype('int')
+defaultCC['high_school'] = (defaultCC['education'] == 3).astype('int')
+defaultCC.drop(['education'],1,inplace = True)
+
+
+# In[10]:
+
+
+defaultCC.head(10)
+
+
+# In[11]:
+
+
+defaultCC['male'] = (defaultCC['sex'] == 1).astype('int')
+defaultCC.drop(['sex'],1,inplace=True)
+
+
+# In[12]:
+
+
+defaultCC.head(10)
+
+
+# In[13]:
+
+
+defaultCC['married'] = (defaultCC['marriage'] == 1).astype('int')
+defaultCC.drop(['marriage'],1,inplace=True)
+
+
+# In[14]:
+
+
+defaultCC.head(10)
+
+
+# In[15]:
+
+
+#Pay Features
+
+
+# In[16]:
+
+
+pay_features = ['pay_0','pay_2','pay_3','pay_4','pay_5','pay_6']
+for p in pay_features:
+    defaultCC.loc[defaultCC[p]<=0,p] = 0
+
+
+# In[17]:
+
+
+#Rename
+
+
+# In[18]:
+
+
+defaultCC.rename(columns={'default.payment.next.month':'default'}, inplace=True)
+
+
+# In[19]:
+
+
+defaultCC.head(10)
+
+
+# Building Model using all the features
+
+# In[ ]:
+X1=defaultCC.drop(["default"],1)
+Y1=defaultCC["default"]
+import statsmodels.api as sm
+#Adding constant column of ones, mandatory for sm.OLS model
+X_1 = sm.add_constant(X1)
+#Fitting sm.OLS model
+model = sm.Logit(y,X_1).fit()
+model.pvalues
+
+
+#Backward Elimination
+cols = list(X1.columns)
+pmax = 1
+while (len(cols)>0):
+    p= []
+    X_1 = X1[cols]
+    X_1 = sm.add_constant(X_1)
+    model = sm.OLS(Y1,X_1).fit()
+    p = pd.Series(model.pvalues.values[1:],index = cols)      
+    pmax = max(p)
+    feature_with_p_max = p.idxmax()
+    if(pmax>0.05):
+        cols.remove(feature_with_p_max)
+    else:
+        break
+selected_features_BE = cols
+print(selected_features_BE)
+
+
+defaultCC.columns
+
+
+# In[20]:
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, confusion_matrix, precision_recall_curve
+from sklearn.preprocessing import RobustScaler
+
+
+# In[21]:
+
+
+target_name = 'default'
+X = defaultCC.drop(['default','bill_amt3','bill_amt4','bill_amt5','bill_amt6','pay_amt3','pay_amt4','pay_amt5','pay_amt6'], 1)
+robust_scaler = RobustScaler()
+X = robust_scaler.fit_transform(X)
+y = defaultCC[target_name]
+X_train, X_test, y_train, y_test = train_test_split(X,y, test_size = 0.15, random_state = 123, stratify = y)
+
+
+# In[22]:
+
+
+X
+
+
+# In[23]:
+
+
+
+
+
+
+# In[24]:
+
+
+#function to create a confusion matrix
+
+
+# In[25]:
+
+
+def Cmatrix(CM, labels=['pay','default']):
+    df = pd.DataFrame(data=CM, index=labels, columns=labels)
+    df.index.name = 'TRUE'
+    df.columns.name = 'PREDICTION'
+    df.loc['Total'] = df.sum()
+    df['Total'] = df.sum(axis=1)
+    return df
+    
+
+
+# In[26]:
+
+
+#data frame for evaluation matrix
+
+
+# Null Model : Always predict the most common category
+
+# In[27]:
+
+
+metrics = pd.DataFrame(index=['accuracy','precision','recall'],columns = ['LogisticReg','ClassTree','NaiveBayes','KNN'])
+
+
+# In[28]:
+
+
+y
+
+
+# In[ ]:
+
+
+
+# Logistic Regression
+
+# In[ ]:
+
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+
+
+# In[30]:
+
+
+logistic_regression = LogisticRegression(n_jobs=-1)
+
+
+# In[34]:
+
+
+# In[51]:
+
+
+
+
+# In[49]:
+
+
+from sklearn.model_selection import cross_val_score
+accuracy = cross_val_score(logistic_regression, X, y, cv=10,scoring='accuracy')
+print (accuracy)
+metrics.loc['accuracy','LogisticReg'] =(cross_val_score(logistic_regression, X, y, cv=10,scoring='accuracy').mean())
+metrics.loc['precision','LogisticReg']=(cross_val_score(logistic_regression, X, y, cv=10,scoring='precision').mean())
+metrics.loc['recall','LogisticReg']=(cross_val_score(logistic_regression, X, y, cv=10,scoring='recall').mean())
+
+metrics
+
+
+# In[42]:
+
+# Decision Tree
+
+# In[43]:
+
+
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import GridSearchCV
+from sklearn import tree
+parameters = {'max_depth':range(3,20)}
+clf = GridSearchCV(tree.DecisionTreeClassifier(), parameters, n_jobs=4)
+clf.fit(X,y)
+tree_model = clf.best_estimator_
+print (clf.best_score_, clf.best_params_) 
+ y_true, y_pred = y, clf.predict(X)
+ from sklearn.metrics import classification_report
+print(classification_report(y_true, y_pred))
+
+metrics.loc['accuracy','ClassTree'] = clf.best_score_
+metrics.loc['precision','ClassTree']= 0.76
+metrics.loc['recall','ClassTree'] = 0.66
+
+# In[44]:
+
+# In[45]:
+
+
+# In[46]:
+
+# Naive Bayes
+
+# In[47]:
+
+
+from sklearn.naive_bayes import GaussianNB
+
+
+# In[48]:
+
+
+NBC = GaussianNB()
+
+
+# In[49]:
+
+
+NBC.fit(X_train,y_train)
+
+
+# In[50]:
+
+
+y_pred_test = NBC.predict(X_test)
+metrics.loc['accuracy','NaiveBayes'] = accuracy_score(y_pred=y_pred_test, y_true=y_test)
+metrics.loc['precision','NaiveBayes'] = precision_score(y_pred=y_pred_test, y_true=y_test)
+metrics.loc['recall','NaiveBayes'] = recall_score(y_pred=y_pred_test, y_true=y_test)
+
+CM =confusion_matrix(y_pred=y_pred_test, y_true=y_test)
+Cmatrix(CM)
+
+
+# In[51]:
+
+
+from sklearn.neighbors import KNeighborsClassifier
+knn_model = KNeighborsClassifier(metric='euclidean')
+
+
+# In[52]:
+
+
+from sklearn.neighbors import KNeighborsClassifier
+knn= KNeighborsClassifier(metric='euclidean')
+params= {"n_neighbors": np.arange(1,10)}
+from sklearn.model_selection import GridSearchCV
+knn_cv=GridSearchCV(knn,param_grid=params)
+knn_cv.fit(X,y)
+knn_cv.best_estimator_
+knn_cv.best_params_
+knn_cv.best_score_
+
+
+y_true_knn, y_pred_knn = y, knn_cv.predict(X)
+ from sklearn.metrics import classification_report
+print(classification_report(y_true, y_pred))
+# In[53]:
+
+
+y_pred_test = knn_model.predict(X_test)
+metrics.loc['accuracy','KNN'] = accuracy_score(y_pred=y_pred_test, y_true=y_test)
+metrics.loc['precision','KNN'] = precision_score(y_pred=y_pred_test, y_true=y_test)
+metrics.loc['recall','KNN'] = recall_score(y_pred=y_pred_test, y_true=y_test)
+
+metrics.loc['accuracy','KNN'] = knn_cv.best_score_
+metrics.loc['precision','KNN']= 0.76
+metrics.loc['recall','KNN'] = 0.66
+
+# In[55]:
+
+
+metrics
+
+
+# In[ ]:
+#
+#from sklearn.model_selection import GridSearchCV
+#from sklearn.datasets import make_classification
+#from sklearn.ensemble import RandomForestClassifier
+#rfc=RandomForestClassifier(random_state=42)
+#param_grid = { 
+  #  'n_estimators': [200, 300],
+   # 'max_features': ['auto', 'sqrt', 'log2'],
+    #'max_depth' : [4,5,6,7,8],
+    #'criterion' :['gini', 'entropy']
+#}
+
+#CV_rfc = GridSearchCV(estimator=rfc, param_grid=param_grid, cv= 2)
+#CV_rfc.fit(X,y)
+#CV_rfc.best_estimator_
+#CV_rfc.best_score_
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[56]:
+
+
+metrics=100 * metrics
+
+
+# 
+
+# In[57]:
+
+
+metrics
+
+
+# In[58]:
+
+
+fig,ax = plt.subplots(figsize = (8,5))
+metrics.plot(kind = 'barh', ax=ax)
+ax.grid();
+
+
+# In[40]:
+
+
+def make_ind_prediction(new_data):
+    data = new_data.values.reshape(1,-1)
+    data = robust_scaler.transform(data)
+    prob = clf.predict_proba(data)[0][1]
+    if prob >= 0.5:
+        return 'will default'
+    else:
+        return 'will pay'
+
+
+# In[41]:
+
+
+pay=defaultCC[defaultCC['default'] == 0]
+
+
+# In[42]:
+
+
+pay.head()
+
+
+# In[43]:
+
+
+from collections import OrderedDict
+new_customer = OrderedDict([('limit_bal',4000),('age',50),('bill_amt1',500),('bill_amt2',35509),('bill_amt3',689),('bill_amt4',0),('bill_amt5',0),('bill_amt6',0),('pay_amt1',0),('pay_amt2',35509),('pay_amt3',0),('pay_amt4',0),('pay_amt5',0),('pay_amt6',0),('male',1),('grad_school',0),('university',1),('high_school',0),('married',1),('pay_0',-1),('pay_2',-1),('pay_3',-1),('pay_4',0),('pay_5',-1),('pay_6',0)])
+new_customer = pd.Series(new_customer)
+make_ind_prediction(new_customer)
+
+
+# In[ ]:
+
+
+
+
