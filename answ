@@ -1,0 +1,92 @@
+# Question 1 - B)Feature F1 is an example of ordinal variable.
+# Question 2 - B) Only 2
+# Question 3 - A) Only 1
+# Question 4 - A)-(5/8 log(5/8) + 3/8 log(3/8))
+# Question 5 - D) Both A and B
+# Question 6 - A) Only 1 is correct
+# Question 7 - A) 1 and 3
+# Question 8 - A) 1 and 2
+# Question 9 - B) 2
+# Question 10 - E) 1 and 4
+
+import pandas as pd
+import os
+os.getcwd()
+train = pd.read_csv('train.csv')
+train.head(5)
+train.shape
+test = pd.read_csv('test.csv')
+test.head(10)
+test.shape
+train.dtypes.value_counts()
+test.dtypes.value_counts()
+train.isnull().sum()
+test.isnull().sum()
+train.columns
+test.columns
+train.Category.value_counts()
+from sklearn.preprocessing import LabelEncoder
+le = LabelEncoder()
+train['Category'] = le.fit_transform(train.Category)
+train.head(10)
+train.PdDistrict.value_counts()
+feature_cols =['DayOfWeek', 'PdDistrict']
+train = pd.get_dummies(train, columns=feature_cols)
+
+train.head(5)
+test = pd.get_dummies(test, columns=feature_cols)
+test.head(5)
+import datetime as dt
+train['Dates'] = pd.to_datetime(train['Dates'], errors='coerce')
+
+for x in [train]:
+    x['years'] = x['Dates'].dt.year
+    x['months'] = x['Dates'].dt.month
+    x['days'] = x['Dates'].dt.day
+    x['hours'] = x['Dates'].dt.hour
+    x['minutes'] = x['Dates'].dt.minute
+    x['seconds'] = x['Dates'].dt.second
+
+
+train.head(5)
+test['Dates'] = pd.to_datetime(test['Dates'], errors='coerce')
+test.head(5)
+train_new = train.drop(['Dates', 'Address','Resolution','Descript'],1)
+train_new.head(5)
+test_new = test.drop(['Dates', 'Address'],1)
+test_new.head(5)
+train_new.describe()
+corr = train_new.corr()
+corr["Category"]
+X_train = train_new.drop(['Category'],1)
+X_train.head(2)
+y_train= train_new['Category']
+y_train.head(2)
+X_test = test_new.drop(['Id'],1)
+X_test.head(5)
+from sklearn.neighbors import KNeighborsClassifier
+knn = KNeighborsClassifier()
+knn.fit(X_train,y_train)
+y_pred_knn = knn.predict(X_train)
+from sklearn.metrics import accuracy_score
+accuracy_score(y_train,y_pred_knn)
+knn_prediction = knn.predict(X_test)
+#KNN Grid Search
+#import numpy as np
+#params= {"n_neighbors": np.arange(1,10)}
+#from sklearn.model_selection import GridSearchCV
+#knn_cv=GridSearchCV(knn,param_grid=params)
+#knn_cv.fit(X_train,y_train)
+#knn_cv.best_score_
+
+from sklearn.tree import DecisionTreeClassifier
+clf=DecisionTreeClassifier()
+clf.fit(X_train,y_train)
+y_pred_ds = clf.predict(X_train)
+accuracy_score(y_train,y_pred_ds)
+
+DecisonTree_prediction = clf.predict(X_test)
+
+#Decision Tree Cross Validation
+from sklearn.model_selection import cross_val_score
+cross_val_score(clf,X_train,y_train,cv=10).mean()
